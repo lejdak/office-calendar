@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Office Calendar</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --danger: #dc2626;
+      --weekend: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .banner {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    header {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .today-badge {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.85rem;
+      background: var(--green-soft);
+      color: var(--green);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.92rem;
+      outline: none;
+      min-width: 190px;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .calendar-card, .side-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .cal-header h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .nav-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    button:hover { background: #f1f5f9; }
+
+    button.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    button.primary:hover { background: #1d4ed8; }
+
+    button.danger {
+      background: #fff;
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+    button.danger:hover { background: #fef2f2; }
+
+    .weekdays, .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .weekdays div {
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding-bottom: 6px;
+    }
+
+    .day-cell {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 105px;
+      padding: 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+
+    .day-cell:hover { border-color: #94a3b8; }
+    .day-cell.weekend { background: var(--weekend); }
+    .day-cell.empty {
+      border-color: transparent;
+      background: transparent;
+      cursor: default;
+    }
+    .day-cell.today {
+      border: 2px solid var(--primary);
+    }
+    .day-cell.selected {
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+      border-color: var(--primary);
+    }
+    .day-cell.dimmed { opacity: 0.35; }
+
+    .day-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .day-num {
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .day-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .count-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+
+    .quick-btn {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .quick-btn.going {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: #86efac;
+    }
+
+    .names-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 2px;
+      overflow: hidden;
+    }
+
+    .mini-chip {
+      font-size: 0.72rem;
+      background: #f1f5f9;
+      color: var(--text);
+      padding: 2px 5px;
+      border-radius: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-chip.me {
+      background: var(--green-soft);
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .mini-chip.match {
+      background: #fef08a;
+      color: #854d0e;
+      font-weight: 700;
+    }
+
+    .more-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding-left: 2px;
+    }
+
+    .side-card h3 {
+      margin: 0 0 4px 0;
+      font-size: 1.05rem;
+    }
+
+    .side-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .note-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .note-row input { width: 100%; min-width: 0; }
+
+    .attendee-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 430px;
+      overflow-y: auto;
+    }
+
+    .attendee-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.88rem;
+    }
+
+    .attendee-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .attendee-name {
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .attendee-note {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .remove-x {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1rem;
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    .remove-x:hover {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 10px; }
+      .day-cell { min-height: 70px; padding: 4px; }
+      .mini-chip { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="configBanner" class="banner">
+      Firebase is not configured yet. Open <code>index.html</code> and paste your <code>firebaseConfig</code> values.
+    </div>
+
+    <header>
+      <div class="title-group">
+        <h1>Office Attendance Calendar</h1>
+        <span id="todayBadge" class="today-badge">Loading today...</span>
+      </div>
+      <div class="controls">
+        <div class="field">
+          <label for="myNameInput">Your Name</label>
+          <input id="myNameInput" type="text" placeholder="e.g. Marco Rossi" maxlength="40" />
+        </div>
+        <div class="field">
+          <label for="searchInput">Filter Teammate</label>
+          <input id="searchInput" type="text" placeholder="Search name..." maxlength="40" />
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="calendar-card">
+        <div class="cal-header">
+          <h2 id="monthLabel">Month Year</h2>
+          <div class="nav-btns">
+            <button id="prevBtn">&larr; Prev</button>
+            <button id="todayBtn">Today</button>
+            <button id="nextBtn">Next &rarr;</button>
+          </div>
+        </div>
+        <div class="weekdays">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+        <div id="daysGrid" class="days-grid"></div>
+      </div>
+
+      <aside class="side-card">
+        <h3 id="sideDateTitle">Select a day</h3>
+        <div id="sideDateSub" class="side-sub">0 people going to the office</div>
+
+        <div class="note-row">
+          <input id="noteInput" type="text" placeholder="Optional note (e.g. Floor 3, until 15:00)" maxlength="60" />
+          <button id="toggleMeBtn" class="primary">I'm going to the office</button>
+        </div>
+
+        <ul id="attendeeList" class="attendee-list"></ul>
+      </aside>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+    import {
+      getFirestore, collection, doc, setDoc, deleteDoc,
+      query, where, onSnapshot, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+    // ==========================================
+    // PASTE YOUR FIREBASE CONFIG BELOW
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAlE8IA9t2qLwNpUFEP1VMXFFiWQm8IoPI",
+        authDomain: "office-calendar-bc3e6.firebaseapp.com",
+        projectId: "office-calendar-bc3e6",
+        storageBucket: "office-calendar-bc3e6.firebasestorage.app",
+        messagingSenderId: "199032405852",
+        appId: "1:199032405852:web:54f897ce5821deffb0cb99",
+         measurementId: "G-08DRFV97XE"
+   };
+
+    if (firebaseConfig.apiKey === "PASTE_YOUR_API_KEY") {
+      document.getElementById("configBanner").style.display = "block";
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const attendanceCol = collection(db, "attendance");
+
+    // Helpers
+    function formatYMD(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function makeDocId(dateStr, name) {
+      const bytes = new TextEncoder().encode(name.trim().toLowerCase());
+      const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      return `${dateStr}__${hex}`;
+    }
+
+    // State
+    const now = new Date();
+    const todayStr = formatYMD(now);
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+    let selectedDateStr = todayStr;
+    let monthData = {}; // { "YYYY-MM-DD": [ { id, name, date, note } ] }
+    let unsubscribeMonth = null;
+
+    // DOM elements
+    const myNameInput = document.getElementById("myNameInput");
+    const searchInput = document.getElementById("searchInput");
+    const monthLabel = document.getElementById("monthLabel");
+    const daysGrid = document.getElementById("daysGrid");
+    const sideDateTitle = document.getElementById("sideDateTitle");
+    const sideDateSub = document.getElementById("sideDateSub");
+    const noteInput = document.getElementById("noteInput");
+    const toggleMeBtn = document.getElementById("toggleMeBtn");
+    const attendeeList = document.getElementById("attendeeList");
+    const todayBadge = document.getElementById("todayBadge");
+
+    // Load saved name
+    myNameInput.value = localStorage.getItem("office_my_name") || "";
+    myNameInput.addEventListener("input", () => {
+      localStorage.setItem("office_my_name", myNameInput.value.trim());
+      renderCalendar();
+      renderSidePanel();
+    });
+
+    searchInput.addEventListener("input", () => {
+      renderCalendar();
+    });
+
+    // Listen to today's count independently so it's always accurate
+    onSnapshot(query(attendanceCol, where("date", "==", todayStr)), (snap) => {
+      const count = snap.size;
+      todayBadge.textContent = `${count} ${count === 1 ? "person" : "people"} in office today`;
+    });
+
+    function subscribeToMonth() {
+      if (unsubscribeMonth) unsubscribeMonth();
+
+      const startStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const endStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+      const q = query(
+        attendanceCol,
+        where("date", ">=", startStr),
+        where("date", "<=", endStr)
+      );
+
+      unsubscribeMonth = onSnapshot(q, (snapshot) => {
+        const grouped = {};
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (!grouped[data.date]) grouped[data.date] = [];
+          grouped[data.date].push({ id: docSnap.id, ...data });
+        });
+        for (const dateKey in grouped) {
+          grouped[dateKey].sort((a, b) => a.name.localeCompare(b.name));
+        }
+        monthData = grouped;
+        renderCalendar();
+        renderSidePanel();
+      });
+    }
+
+    async function toggleAttendance(dateStr, customNote = "") {
+      const name = myNameInput.value.trim();
+      if (!name) {
+        alert("Please type your name in the 'Your Name' box at the top first!");
+        myNameInput.focus();
+        return;
+      }
+
+      const docId = makeDocId(dateStr, name);
+      const existing = (monthData[dateStr] || []).find((x) => x.id === docId);
+
+      if (existing) {
+        await deleteDoc(doc(db, "attendance", docId));
+      } else {
+        await setDoc(doc(db, "attendance", docId), {
+          name: name,
+          date: dateStr,
+          note: customNote.trim().slice(0, 60),
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    function renderCalendar() {
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      monthLabel.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+      daysGrid.innerHTML = "";
+
+      const firstDay = new Date(viewYear, viewMonth, 1);
+      const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      const myName = myNameInput.value.trim().toLowerCase();
+      const search = searchInput.value.trim().toLowerCase();
+
+      for (let i = 0; i < startOffset; i++) {
+        const empty = document.createElement("div");
+        empty.className = "day-cell empty";
+        daysGrid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(viewYear, viewMonth, day);
+        const dateStr = formatYMD(dateObj);
+        const dayOfWeek = (dateObj.getDay() + 6) % 7; // 5=Sat, 6=Sun
+        const entries = monthData[dateStr] || [];
+        const myDocId = myName ? makeDocId(dateStr, myName) : null;
+        const amIGoing = myDocId && entries.some((e) => e.id === myDocId);
+
+        const hasMatch = search
+          ? entries.some((e) => e.name.toLowerCase().includes(search))
+          : false;
+
+        const cell = document.createElement("div");
+        cell.className = "day-cell";
+        if (dayOfWeek >= 5) cell.classList.add("weekend");
+        if (dateStr === todayStr) cell.classList.add("today");
+        if (dateStr === selectedDateStr) cell.classList.add("selected");
+        if (search && !hasMatch) cell.classList.add("dimmed");
+
+        cell.addEventListener("click", () => {
+          selectedDateStr = dateStr;
+          renderCalendar();
+          renderSidePanel();
+        });
+
+        const top = document.createElement("div");
+        top.className = "day-top";
+
+        const num = document.createElement("span");
+        num.className = "day-num";
+        num.textContent = day;
+
+        const actions = document.createElement("div");
+        actions.className = "day-actions";
+
+        if (entries.length > 0) {
+          const pill = document.createElement("span");
+          pill.className = "count-pill";
+          pill.textContent = entries.length;
+          actions.appendChild(pill);
+        }
+
+        const qBtn = document.createElement("button");
+        qBtn.className = "quick-btn" + (amIGoing ? " going" : "");
+        qBtn.title = amIGoing ? "Click to remove yourself" : "Click to mark yourself going";
+        qBtn.textContent = amIGoing ? "✓" : "+";
+        qBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedDateStr = dateStr;
+          toggleAttendance(dateStr);
+        });
+        actions.appendChild(qBtn);
+
+        top.appendChild(num);
+        top.appendChild(actions);
+        cell.appendChild(top);
+
+        const preview = document.createElement("div");
+        preview.className = "names-preview";
+
+        const maxVisible = 3;
+        entries.slice(0, maxVisible).forEach((entry) => {
+          const chip = document.createElement("div");
+          chip.className = "mini-chip";
+          if (myDocId && entry.id === myDocId) chip.classList.add("me");
+          if (search && entry.name.toLowerCase().includes(search)) chip.classList.add("match");
+          chip.textContent = entry.name;
+          preview.appendChild(chip);
+        });
+
+        if (entries.length > maxVisible) {
+          const more = document.createElement("div");
+          more.className = "more-label";
+          more.textContent = `+${entries.length - maxVisible} more`;
+          preview.appendChild(more);
+        }
+
+        cell.appendChild(preview);
+        daysGrid.appendChild(cell);
+      }
+    }
+
+    function renderSidePanel() {
+      const [y, m, d] = selectedDateStr.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      sideDateTitle.textContent = dateObj.toLocaleDateString(undefined, {
+        weekday: "long", month: "short", day: "numeric", year: "numeric"
+      });
+
+      const entries = monthData[selectedDateStr] || [];
+      sideDateSub.textContent = `${entries.length} ${entries.length === 1 ? "person" : "people"} going to the office`;
+
+      const myName = myNameInput.value.trim();
+      const myDocId = myName ? makeDocId(selectedDateStr, myName) : null;
+      const amIGoing = myDocId && entries.some((e) => e.id === myDocId);
+
+      if (amIGoing) {
+        toggleMeBtn.textContent = "Remove me from this day";
+        toggleMeBtn.className = "danger";
+        noteInput.style.display = "none";
+      } else {
+        toggleMeBtn.textContent = "I'm going to the office";
+        toggleMeBtn.className = "primary";
+        noteInput.style.display = "block";
+      }
+
+      attendeeList.innerHTML = "";
+      if (entries.length === 0) {
+        const emptyLi = document.createElement("li");
+        emptyLi.style.color = "#64748b";
+        emptyLi.style.fontSize = "0.88rem";
+        emptyLi.textContent = "Nobody signed up for this day yet.";
+        attendeeList.appendChild(emptyLi);
+        return;
+      }
+
+      entries.forEach((entry) => {
+        const li = document.createElement("li");
+        li.className = "attendee-item";
+
+        const info = document.createElement("div");
+        info.className = "attendee-info";
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "attendee-name";
+        nameEl.textContent = entry.name;
+        info.appendChild(nameEl);
+
+        if (entry.note) {
+          const noteEl = document.createElement("span");
+          noteEl.className = "attendee-note";
+          noteEl.textContent = entry.note;
+          info.appendChild(noteEl);
+        }
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "remove-x";
+        delBtn.title = "Remove";
+        delBtn.textContent = "×";
+        delBtn.addEventListener("click", async () => {
+          if (confirm(`Remove ${entry.name} from ${selectedDateStr}?`)) {
+            await deleteDoc(doc(db, "attendance", entry.id));
+          }
+        });
+
+        li.appendChild(info);
+        li.appendChild(delBtn);
+        attendeeList.appendChild(li);
+      });
+    }
+
+    toggleMeBtn.addEventListener("click", async () => {
+      await toggleAttendance(selectedDateStr, noteInput.value);
+      noteInput.value = "";
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      subscribeToMonth();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      subscribeToMonth();
+    });
+
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      const t = new Date();
+      viewYear = t.getFullYear();
+      viewMonth = t.getMonth();
+      selectedDateStr = todayStr;
+      subscribeToMonth();
+    });
+
+    subscribeToMonth();
+  </script>
+</body>
+</html>
